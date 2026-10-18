@@ -1,0 +1,52 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android-app/**'
+      - '.github/workflows/main.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Find Android project
+        id: project
+        run: |
+          if [ -f android-app/gradlew ]; then
+            echo "dir=android-app" >> "$GITHUB_OUTPUT"
+          elif [ -f android-app/android-app/gradlew ]; then
+            echo "dir=android-app/android-app" >> "$GITHUB_OUTPUT"
+          else
+            echo "Gradle wrapper not found. Check project files."
+            exit 1
+          fi
+
+      - name: Build debug APK
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Calculator-APK
+          path: |
+            android-app/**/build/outputs/apk/debug/*.apk
+            android-app/android-app/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
